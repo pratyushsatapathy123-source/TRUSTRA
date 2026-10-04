@@ -62,7 +62,6 @@ To run the automated test suite:
 npm test
 ```
 
----
 
 ## 6. How to Deploy & Run
 
