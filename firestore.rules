@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    function isValidAnalysis(data) {
+      return data.keys().hasAll(['analysisId', 'createdAt', 'inputType', 'language', 'riskLevel', 'riskScore', 'confidence', 'summary', 'signals', 'claims', 'evidenceStatus', 'simpleExplanation', 'safeActions']) &&
+             data.analysisId is string && data.analysisId.size() <= 64 &&
+             data.createdAt is string && data.createdAt.size() <= 64 &&
+             data.inputType in ['text', 'image', 'voice'] &&
+             data.language in ['en', 'hi', 'or'] &&
+             data.riskLevel in ['LOW', 'MEDIUM', 'HIGH', 'UNKNOWN'] &&
+             data.riskScore is number &&
+             data.confidence is number &&
+             data.summary is string && data.summary.size() <= 4096 &&
+             data.signals is list && data.signals.size() <= 50 &&
+             data.claims is list && data.claims.size() <= 50 &&
+             data.evidenceStatus in ['VERIFIED', 'PARTIALLY_VERIFIED', 'UNVERIFIED', 'INSUFFICIENT_EVIDENCE'] &&
+             data.simpleExplanation is string && data.simpleExplanation.size() <= 4096 &&
+             data.safeActions is list && data.safeActions.size() <= 20;
+    }
+
+    function isValidVerificationResult(data) {
+      return data.keys().hasAll(['analysisId', 'claim', 'status', 'explanation', 'createdAt']) &&
+             data.analysisId is string && data.analysisId.size() <= 64 &&
+             data.claim is string && data.claim.size() <= 1024 &&
+             data.status in ['VERIFIED', 'PARTIALLY_VERIFIED', 'UNVERIFIED', 'CONTRADICTED', 'INSUFFICIENT_EVIDENCE'] &&
+             data.explanation is string && data.explanation.size() <= 2048 &&
+             data.createdAt is string && data.createdAt.size() <= 64 &&
+             (!('sources' in data) || (data.sources is list && data.sources.size() <= 20));
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['lastActive']) &&
+             data.lastActive is string && data.lastActive.size() <= 64;
+    }
+
+    // Default deny-all catch-all rule
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Analyses Collection:
+    // Read: allowed by exact document ID only (no arbitrary list scraping)
+    // Create: validated strictly against schema
+    // Update/Delete: forbidden (immutable records)
+    match /analyses/{analysisId} {
+      allow get: if isValidId(analysisId);
+      allow list: if false;
+      allow create: if isValidId(analysisId) && isValidAnalysis(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Verification Results:
+    // Read: allowed by exact ID
+    // Create: validated against schema
+    // Update/Delete: forbidden
+    match /verification_results/{resultId} {
+      allow get: if isValidId(resultId);
+      allow list: if false;
+      allow create: if isValidId(resultId) && isValidVerificationResult(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // Anonymous Sessions:
+    match /sessions/{sessionId} {
+      allow get: if isValidId(sessionId);
+      allow list: if false;
+      allow create, update: if isValidId(sessionId) && isValidSession(request.resource.data);
+      allow delete: if false;
+    }
+  }
+}

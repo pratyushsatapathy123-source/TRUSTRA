@@ -1,0 +1,8 @@
+{
+  "name": "Remix TRUSTRA — AI Financial Safety Assistant",
+  "description": "Verify before you trust. Understand suspicious financial messages, claims, and offers before taking action.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
